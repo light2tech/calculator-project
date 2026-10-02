@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#00aaff">
+    <title>Calculator</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="index.js" defer></script>
+</head>
+<body>
+    <main class="calculator-grid" data-calculator aria-label="Calculator">
+        <div class="output" aria-label="Display" aria-live="polite" aria-atomic="true">
+            <div class="previous-operand" data-previous-operand></div>
+            <div class="current-operand" data-current-operand>0</div>
+        </div>
+        <button class="span-two" type="button" data-action="clear" aria-label="All clear">AC</button>
+        <button type="button" data-action="delete" aria-label="Delete last digit">DEL</button>
+        <button type="button" data-action="operator" data-operator="÷" aria-label="Divide">÷</button>
+        <button type="button" data-number="7">7</button>
+        <button type="button" data-number="8">8</button>
+        <button type="button" data-number="9">9</button>
+        <button type="button" data-action="operator" data-operator="×" aria-label="Multiply">×</button>
+        <button type="button" data-number="4">4</button>
+        <button type="button" data-number="5">5</button>
+        <button type="button" data-number="6">6</button>
+        <button type="button" data-action="operator" data-operator="-" aria-label="Subtract">-</button>
+        <button type="button" data-number="1">1</button>
+        <button type="button" data-number="2">2</button>
+        <button type="button" data-number="3">3</button>
+        <button type="button" data-action="operator" data-operator="+" aria-label="Add">+</button>
+        <button class="span-two" type="button" data-number="0">0</button>
+        <button type="button" data-action="decimal" aria-label="Decimal point">.</button>
+        <button type="button" data-action="equals" aria-label="Equals">=</button>
+    </main>
+</body>
+</html>
