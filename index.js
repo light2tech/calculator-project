@@ -2,200 +2,45 @@
 const calculator = document.querySelector("[data-calculator]");
 const previousOperand = calculator.querySelector("[data-previous-operand]");
 const currentOperand = calculator.querySelector("[data-current-operand]");
+let current = "0", saved = "", op = "", reset = false;
 
-let current = "0";
-let storedValue = "";
-let operator = null;
-let waitingForNewNumber = false;
-let hasError = false;
+const render = () => {
+  currentOperand.textContent = current;
+  previousOperand.textContent = op ? `${saved} ${op}` : "";
+};
 
-function formatNumber(value) {
-  if (value === "Error" || value === "Cannot divide by zero") {
-    return value;
-  }
+const calc = () => {
+  if (!op) return;
+  const x = Number(saved), y = Number(current);
+  current = ({ "+": x + y, "-": x - y, "×": x * y, "÷": y === 0 ? "Error" : x / y })[op];
+  saved = ""; op = ""; reset = true;
+};
 
-  const [whole, decimal] = value.split(".");
-  const formattedWhole = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return decimal === undefined ? formattedWhole : `${formattedWhole}.${decimal}`;
-}
+const act = (value) => {
+  if (value === "clear") return (current = "0", saved = "", op = "", reset = false, render());
+  if (value === "delete") return (current = current.length > 1 ? current.slice(0, -1) : "0", render());
+  if (value === "decimal") return (!current.includes(".") && (current = current === "0" ? "0." : current + "."), render());
+  if (value === "equals") return (calc(), render());
+  if (/\d/.test(value)) return (current = reset || current === "Error" || current === "0" ? value : current + value, reset = false, render());
+  if (["+", "-", "×", "÷"].includes(value)) return (op && !reset ? calc() : null, saved = current, op = value, current = "0", reset = false, render());
+};
 
-function updateDisplay() {
-  currentOperand.textContent = formatNumber(current);
-  previousOperand.textContent = operator ? `${formatNumber(storedValue)} ${operator}` : "";
-}
-
-function clearAll() {
-  current = "0";
-  storedValue = "";
-  operator = null;
-  waitingForNewNumber = false;
-  hasError = false;
-}
-
-function inputNumber(number) {
-  if (hasError) {
-    clearAll();
-  }
-
-  if (waitingForNewNumber) {
-    current = number;
-    waitingForNewNumber = false;
-  } else if (current === "0") {
-    current = number;
-  } else if (current.length < 15) {
-    current += number;
-  }
-}
-
-function inputDecimal() {
-  if (hasError) {
-    clearAll();
-  }
-
-  if (waitingForNewNumber) {
-    current = "0";
-    waitingForNewNumber = false;
-  }
-
-  if (!current.includes(".")) {
-    current += ".";
-  }
-}
-
-function calculate() {
-  if (!operator || waitingForNewNumber) {
-    return;
-  }
-
-  const left = Number(storedValue);
-  const right = Number(current);
-  let result;
-
-  switch (operator) {
-    case "+":
-      result = left + right;
-      break;
-    case "-":
-      result = left - right;
-      break;
-    case "×":
-      result = left * right;
-      break;
-    case "÷":
-      if (right === 0) {
-        current = "Cannot divide by zero";
-        storedValue = "";
-        operator = null;
-        waitingForNewNumber = true;
-        hasError = true;
-        return;
-      }
-      result = left / right;
-      break;
-    default:
-      return;
-  }
-
-  if (!Number.isFinite(result)) {
-    current = "Error";
-    storedValue = "";
-    operator = null;
-    waitingForNewNumber = true;
-    hasError = true;
-    return;
-  }
-
-  current = String(Number(result.toPrecision(12)));
-  storedValue = "";
-  operator = null;
-  waitingForNewNumber = true;
-}
-
-function chooseOperation(nextOperator) {
-  if (hasError) {
-    return;
-  }
-
-  if (operator && !waitingForNewNumber) {
-    calculate();
-  }
-
-  storedValue = current;
-  operator = nextOperator;
-  waitingForNewNumber = true;
-}
-
-function deleteDigit() {
-  if (hasError) {
-    clearAll();
-    return;
-  }
-
-  if (waitingForNewNumber) {
-    waitingForNewNumber = false;
-    return;
-  }
-
-  current = current.length > 1 ? current.slice(0, -1) : "0";
-}
-
-function handleAction(action, value) {
-  switch (action) {
-    case "number":
-      inputNumber(value);
-      break;
-    case "decimal":
-      inputDecimal();
-      break;
-    case "operator":
-      chooseOperation(value);
-      break;
-    case "equals":
-      if (operator !== null && !waitingForNewNumber) {
-        calculate();
-      }
-      break;
-    case "clear":
-      clearAll();
-      break;
-    case "delete":
-      deleteDigit();
-      break;
-  }
-
-  updateDisplay();
-}
-
-calculator.addEventListener("click", (event) => {
-  const button = event.target.closest("button");
-  if (!button) return;
-
-  if (button.dataset.number !== undefined) {
-    handleAction("number", button.dataset.number);
-  } else {
-    handleAction(button.dataset.action, button.dataset.operator);
-  }
+calculator.addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  if (btn.dataset.number !== undefined) act(btn.dataset.number);
+  else act(btn.dataset.action === "operator" ? btn.dataset.operator : btn.dataset.action);
 });
 
-document.addEventListener("keydown", (event) => {
-  if (/^\d$/.test(event.key)) {
-    handleAction("number", event.key);
-  } else if (event.key === "." || event.key === ",") {
-    handleAction("decimal");
-  } else if (["+", "-"].includes(event.key)) {
-    handleAction("operator", event.key);
-  } else if (event.key === "*" || event.key.toLowerCase() === "x") {
-    handleAction("operator", "×");
-  } else if (event.key === "/") {
-    handleAction("operator", "÷");
-  } else if (event.key === "Enter" || event.key === "=") {
-    event.preventDefault();
-    handleAction("equals");
-  } else if (event.key === "Backspace") {
-    handleAction("delete");
-  } else if (event.key === "Escape" || event.key === "Delete") {
-    handleAction("clear");
-  }
+document.addEventListener("keydown", e => {
+  if (/\d/.test(e.key)) act(e.key);
+  else if (e.key === "." || e.key === ",") act("decimal");
+  else if (["+", "-"].includes(e.key)) act(e.key);
+  else if (e.key === "*" || e.key.toLowerCase() === "x") act("×");
+  else if (e.key === "/") act("÷");
+  else if (e.key === "Enter" || e.key === "=") act("equals");
+  else if (e.key === "Backspace") act("delete");
+  else if (e.key === "Escape" || e.key === "Delete") act("clear");
 });
 
-updateDisplay();
+render();
