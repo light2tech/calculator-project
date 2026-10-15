@@ -6,7 +6,6 @@
     <meta name="theme-color" content="#00aaff">
     <title>Calculator</title>
     <link rel="stylesheet" href="style.css">
-    <script src="index.js" defer></script>
 </head>
 <body>
     <main class="calculator-grid" data-calculator aria-label="Calculator">
@@ -33,5 +32,158 @@
         <button type="button" data-action="decimal" aria-label="Decimal point">.</button>
         <button type="button" data-action="equals" aria-label="Equals">=</button>
     </main>
+    <script>
+        const calculator = document.querySelector("[data-calculator]");
+        const previousOperand = calculator.querySelector("[data-previous-operand]");
+        const currentOperand = calculator.querySelector("[data-current-operand]");
+        const buttons = calculator.querySelectorAll("button");
+
+        let current = "0";
+        let saved = "";
+        let operator = "";
+        let resetCurrent = false;
+        let errorMessage = "";
+
+        function render() {
+            currentOperand.textContent = current;
+            previousOperand.textContent = errorMessage || (operator ? `${saved} ${operator}` : "");
+        }
+
+        function clear() {
+            current = "0";
+            saved = "";
+            operator = "";
+            resetCurrent = false;
+            errorMessage = "";
+            render();
+        }
+
+        function enterDigit(digit) {
+            if (resetCurrent || current === "Error") {
+                current = digit;
+                resetCurrent = false;
+                errorMessage = "";
+            } else if (current === "0") {
+                current = digit;
+            } else {
+                current += digit;
+            }
+            render();
+        }
+
+        function enterDecimal() {
+            if (resetCurrent || current === "Error") {
+                current = "0.";
+                resetCurrent = false;
+                errorMessage = "";
+            } else if (!current.includes(".")) {
+                current += ".";
+            }
+            render();
+        }
+
+        function deleteDigit() {
+            if (current === "Error") {
+                current = "0";
+                errorMessage = "";
+            } else {
+                current = current.length > 1 ? current.slice(0, -1) : "0";
+            }
+            resetCurrent = false;
+            render();
+        }
+
+        async function calculate() {
+            calculator.setAttribute("aria-busy", "true");
+            buttons.forEach((button) => { button.disabled = true; });
+
+            try {
+                const response = await fetch("/calculate", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ left: saved, right: current, operator })
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.error || "Calculation failed.");
+                }
+
+                current = data.result;
+                saved = "";
+                operator = "";
+                resetCurrent = true;
+                errorMessage = "";
+                return true;
+            } catch (error) {
+                current = "Error";
+                saved = "";
+                operator = "";
+                resetCurrent = true;
+                errorMessage = error.message || "Unable to reach the calculator server.";
+                return false;
+            } finally {
+                buttons.forEach((button) => { button.disabled = false; });
+                calculator.removeAttribute("aria-busy");
+                render();
+            }
+        }
+
+        async function handleAction(value) {
+            if (calculator.hasAttribute("aria-busy")) return;
+            if (value === "clear") {
+                clear();
+            } else if (value === "delete") {
+                deleteDigit();
+            } else if (value === "decimal") {
+                enterDecimal();
+            } else if (value === "equals") {
+                if (operator && !resetCurrent) {
+                    await calculate();
+                }
+            } else if (["+", "-", "×", "÷"].includes(value)) {
+                if (current === "Error") return;
+                if (operator && !resetCurrent) {
+                    if (!await calculate()) return;
+                }
+                saved = current;
+                operator = value;
+                resetCurrent = true;
+                errorMessage = "";
+                render();
+            } else if (/^\d$/.test(value)) {
+                enterDigit(value);
+            }
+        }
+
+        calculator.addEventListener("click", (event) => {
+            const button = event.target.closest("button");
+            if (!button) return;
+
+            if (button.dataset.number !== undefined) {
+                handleAction(button.dataset.number);
+            } else {
+                handleAction(button.dataset.action === "operator" ? button.dataset.operator : button.dataset.action);
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            let action = "";
+            if (/^\d$/.test(event.key)) action = event.key;
+            else if (event.key === "." || event.key === ",") action = "decimal";
+            else if (["+", "-"].includes(event.key)) action = event.key;
+            else if (event.key === "*" || event.key.toLowerCase() === "x") action = "×";
+            else if (event.key === "/") action = "÷";
+            else if (event.key === "Enter" || event.key === "=") action = "equals";
+            else if (event.key === "Backspace") action = "delete";
+            else if (event.key === "Escape" || event.key === "Delete") action = "clear";
+
+            if (action) {
+                event.preventDefault();
+                handleAction(action);
+            }
+        });
+
+        render();
+    </script>
 </body>
 </html>

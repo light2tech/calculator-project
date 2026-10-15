@@ -49,6 +49,11 @@ body {
     outline-offset: 2px;
 }
 
+.calculator-grid > button:disabled {
+    cursor: wait;
+    opacity: .7;
+}
+
 .calculator-grid .span-two {
     grid-column: span 2;
 }
